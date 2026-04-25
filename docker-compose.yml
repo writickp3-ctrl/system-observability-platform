@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  observability:
+    build: .
+    container_name: system-observability-platform
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./logs:/app/logs
+      - ./metrics:/app/metrics
+      - ./sample_logs:/app/sample_logs
+    environment:
+      - FLASK_ENV=production
+      - PORT=5000
+    restart: unless-stopped

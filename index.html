@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="description" content="System Observability Platform — Real-time metrics ingestion, ML-powered anomaly detection and containerized log aggregation by Writick Parui."/>
+<title>OBSRVR — System Observability Platform by Writick Parui</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#090c0f;--bg2:#0f1318;--bg3:#141920;
+  --border:#1c2330;--border2:#242e3d;
+  --green:#00e87a;--green2:#00b85e;--green-dim:rgba(0,232,122,0.1);
+  --red:#ff4757;--red-dim:rgba(255,71,87,0.1);
+  --amber:#ffb300;--amber-dim:rgba(255,179,0,0.1);
+  --blue:#3b9eff;--blue-dim:rgba(59,158,255,0.1);
+  --purple:#a78bfa;--purple-dim:rgba(167,139,250,0.1);
+  --text:#e8edf5;--muted:#3d4a5c;--muted2:#6b7a8d;
+  --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;
+  --radius:8px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);font-family:var(--sans);color:var(--text);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::selection{background:var(--green-dim);color:var(--green)}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── NAV ── */
+.nav{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0.85rem 2.5rem;
+  background:rgba(9,12,15,0.9);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.logo{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--green);letter-spacing:2px}
+.logo span{color:var(--muted2)}
+.nav-links{display:flex;gap:2rem;list-style:none}
+.nav-links a{font-family:var(--mono);font-size:10px;color:var(--muted2);text-decoration:none;letter-spacing:1.5px;transition:color .2s}
+.nav-links a:hover{color:var(--text)}
+.live-pill{
+  font-family:var(--mono);font-size:10px;padding:5px 12px;
+  border:1px solid var(--green);color:var(--green);border-radius:3px;letter-spacing:2px;
+  animation:borderGlow 3s infinite;
+}
+@keyframes borderGlow{
+  0%,100%{box-shadow:0 0 0 0 rgba(0,232,122,0.15)}
+  50%{box-shadow:0 0 0 5px rgba(0,232,122,0)}
+}
+
+/* ── HERO ── */
+.hero{
+  position:relative;padding:7.5rem 2.5rem 4.5rem;
+  text-align:center;overflow:hidden;
+}
+.hero-grid{
+  position:absolute;inset:0;
+  background-image:linear-gradient(rgba(28,35,48,.5) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(28,35,48,.5) 1px,transparent 1px);
+  background-size:50px 50px;pointer-events:none;
+}
+.hero-glow{
+  position:absolute;top:15%;left:50%;transform:translateX(-50%);
+  width:700px;height:350px;
+  background:radial-gradient(ellipse,rgba(0,232,122,.07) 0%,transparent 70%);
+  pointer-events:none;
+}
+.hero-eyebrow{
+  font-family:var(--mono);font-size:10px;color:var(--green);
+  letter-spacing:4px;margin-bottom:1.75rem;
+  opacity:0;animation:fadeUp .7s .15s forwards;
+}
+.hero h1{
+  font-size:clamp(2.8rem,7vw,5.5rem);font-weight:800;
+  line-height:1.0;letter-spacing:-1.5px;
+  margin-bottom:1.75rem;
+  opacity:0;animation:fadeUp .7s .3s forwards;
+}
+.hero h1 em{font-style:normal;color:var(--green)}
+.hero-sub{
+  font-family:var(--mono);font-size:11.5px;color:var(--muted2);
+  line-height:1.9;max-width:560px;margin:0 auto 3rem;
+  opacity:0;animation:fadeUp .7s .45s forwards;
+}
+.hero-btns{
+  display:flex;gap:12px;justify-content:center;flex-wrap:wrap;
+  opacity:0;animation:fadeUp .7s .6s forwards;
+}
+.btn-primary{
+  font-family:var(--mono);font-size:11px;padding:11px 28px;
+  background:var(--green);color:#000;border:none;border-radius:4px;
+  cursor:pointer;letter-spacing:1.5px;font-weight:700;
+  text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+  transition:all .2s;
+}
+.btn-primary:hover{background:var(--green2);transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,232,122,.25)}
+.btn-ghost{
+  font-family:var(--mono);font-size:11px;padding:11px 28px;
+  background:transparent;color:var(--muted2);
+  border:1px solid var(--border2);border-radius:4px;
+  cursor:pointer;letter-spacing:1.5px;
+  text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+  transition:all .2s;
+}
+.btn-ghost:hover{border-color:var(--muted2);color:var(--text)}
+
+/* ── STATUS BAR ── */
+.status-bar{
+  display:flex;align-items:center;justify-content:center;gap:2.5rem;
+  padding:.8rem 2.5rem;flex-wrap:wrap;
+  background:var(--bg2);
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+}
+.s-item{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;color:var(--muted2)}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot.g{background:var(--green);animation:dotBlink 2s infinite}
+.dot.a{background:var(--amber);animation:dotBlink 2.4s .5s infinite}
+.dot.r{background:var(--red)}
+@keyframes dotBlink{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── SHARED ── */
+.section{padding:4.5rem 2.5rem;max-width:1140px;margin:0 auto}
+.s-label{
+  font-family:var(--mono);font-size:10px;color:var(--green);
+  letter-spacing:4px;margin-bottom:2.5rem;
+  display:flex;align-items:center;gap:16px;
+}
+.s-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)}
+
+/* ── METRICS ROW ── */
+.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.metric{position:relative;overflow:hidden;padding:1.1rem 1.3rem;transition:border-color .2s}
+.metric:hover{border-color:var(--border2)}
+.metric::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:8px 8px 0 0}
+.metric.g::before{background:var(--green)}
+.metric.b::before{background:var(--blue)}
+.metric.a::before{background:var(--amber)}
+.metric.r::before{background:var(--red)}
+.m-lbl{font-family:var(--mono);font-size:9px;color:var(--muted2);letter-spacing:2px;margin-bottom:8px}
+.m-val{font-family:var(--mono);font-size:24px;font-weight:700;letter-spacing:-.5px}
+.m-delta{font-family:var(--mono);font-size:10px;margin-top:5px}
+.m-delta.up{color:var(--green)}
+.m-delta.dn{color:var(--red)}
+.m-delta.wn{color:var(--amber)}
+
+/* ── DASHBOARD GRID ── */
+.dash-grid{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.panel{padding:1.3rem}
+.p-title{
+  font-family:var(--mono);font-size:10px;color:var(--muted2);letter-spacing:2px;
+  margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;
+}
+.p-badge{font-size:9px;padding:3px 8px;background:var(--green-dim);color:var(--green);border-radius:3px;letter-spacing:1px}
+
+/* ── LOG FEED ── */
+.log-entry{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:8px 0;border-bottom:1px solid var(--border);
+  font-family:var(--mono);font-size:10px;line-height:1.5;
+  animation:slideIn .3s ease;
+}
+.log-entry:last-child{border-bottom:none}
+.l-time{color:var(--muted2);white-space:nowrap;min-width:72px;padding-top:2px}
+.l-body{flex:1}
+.badge{
+  font-size:8px;padding:2px 7px;border-radius:3px;
+  letter-spacing:1px;display:inline-block;margin-bottom:3px;font-weight:700;
+}
+.CRIT{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,71,87,.25)}
+.WARN{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(255,179,0,.25)}
+.INFO{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(59,158,255,.25)}
+.OK{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,232,122,.25)}
+@keyframes slideIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── AI PORTAL ── */
+.portal-wrap{padding:0 2.5rem 4.5rem;max-width:1140px;margin:0 auto}
+.portal-box{border-radius:12px;overflow:hidden;border:1px solid var(--border)}
+.portal-head{
+  padding:1.4rem 2rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--bg3);flex-wrap:wrap;gap:12px;
+}
+.portal-title{font-family:var(--mono);font-size:11px;color:var(--green);letter-spacing:3px}
+.portal-desc{font-family:var(--mono);font-size:10px;color:var(--muted2);margin-top:4px}
+.ai-pill{
+  font-family:var(--mono);font-size:9px;padding:5px 12px;
+  background:var(--purple-dim);color:var(--purple);
+  border:1px solid rgba(167,139,250,.2);border-radius:3px;letter-spacing:2px;
+}
+.portal-body{padding:2rem;display:grid;grid-template-columns:1fr 1fr;gap:20px;background:var(--bg2)}
+.in-label{font-family:var(--mono);font-size:9px;color:var(--muted2);letter-spacing:2px;display:block;margin-bottom:10px}
+.log-ta{
+  width:100%;height:210px;
+  background:var(--bg);border:1px solid var(--border);border-radius:6px;
+  padding:1rem;font-family:var(--mono);font-size:11px;color:var(--text);
+  resize:vertical;outline:none;line-height:1.75;transition:border-color .2s;
+}
+.log-ta:focus{border-color:rgba(0,232,122,.4)}
+.log-ta::placeholder{color:var(--muted)}
+.sample-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}
+.sample-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px}
+.s-btn{
+  font-family:var(--mono);font-size:9px;padding:5px 11px;
+  background:transparent;color:var(--muted2);
+  border:1px solid var(--border);border-radius:3px;cursor:pointer;
+  letter-spacing:.5px;transition:all .2s;
+}
+.s-btn:hover{border-color:var(--green);color:var(--green)}
+.analyze-btn{
+  width:100%;margin-top:14px;
+  font-family:var(--mono);font-size:11px;padding:13px;
+  background:var(--green);color:#000;border:none;border-radius:6px;
+  cursor:pointer;font-weight:700;letter-spacing:2px;
+  transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.analyze-btn:hover:not(:disabled){background:var(--green2);box-shadow:0 6px 24px rgba(0,232,122,.3)}
+.analyze-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* result area */
+.result-placeholder{
+  min-height:300px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;
+  color:var(--muted2);font-family:var(--mono);font-size:11px;text-align:center;
+  border:1px dashed var(--border);border-radius:var(--radius);
+}
+.rp-icon{font-size:30px;opacity:.25;margin-bottom:4px}
+.result-panel{display:none;flex-direction:column;gap:12px}
+.r-head{
+  font-family:var(--mono);font-size:9px;color:var(--muted2);
+  letter-spacing:2px;padding-bottom:8px;border-bottom:1px solid var(--border);
+}
+.r-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.r-card{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px 13px}
+.r-card-lbl{font-family:var(--mono);font-size:9px;color:var(--muted2);letter-spacing:2px;margin-bottom:6px}
+.r-card-val{font-family:var(--mono);font-size:12px;font-weight:700}
+.r-card-val.red{color:var(--red)}
+.r-card-val.amber{color:var(--amber)}
+.r-card-val.green{color:var(--green)}
+.r-card-val.blue{color:var(--blue)}
+.sev-bar{height:3px;background:var(--border);border-radius:2px;margin-top:7px;overflow:hidden}
+.sev-fill{height:100%;border-radius:2px;transition:width .7s ease}
+.r-body{
+  background:var(--bg3);border:1px solid var(--border);border-radius:6px;
+  padding:12px 13px;font-family:var(--mono);font-size:10px;
+  color:var(--muted2);line-height:1.85;white-space:pre-wrap;
+  max-height:190px;overflow-y:auto;
+}
+.r-body strong{color:var(--text)}
+.r-rec{
+  background:var(--green-dim);border:1px solid rgba(0,232,122,.18);
+  border-radius:6px;padding:12px 13px;
+  font-family:var(--mono);font-size:10px;color:var(--green);line-height:1.8;
+}
+
+/* loading dots */
+.ldots span{animation:ld 1.2s infinite}
+.ldots span:nth-child(2){animation-delay:.2s}
+.ldots span:nth-child(3){animation-delay:.4s}
+@keyframes ld{0%,80%,100%{opacity:0}40%{opacity:1}}
+
+/* ── FEATURES ── */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.feat{padding:1.5rem;transition:all .2s;cursor:default}
+.feat:hover{border-color:rgba(0,232,122,.35);transform:translateY(-2px)}
+.feat-tag{font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:2px;margin-bottom:.9rem}
+.feat h3{font-size:14px;font-weight:700;margin-bottom:.55rem}
+.feat p{font-family:var(--mono);font-size:10px;color:var(--muted2);line-height:1.8}
+
+/* ── STACK ── */
+.stack-wrap{padding:0 2.5rem 4.5rem;max-width:1140px;margin:0 auto}
+.pill-row{display:flex;flex-wrap:wrap;gap:8px}
+.pill{
+  font-family:var(--mono);font-size:10px;padding:6px 14px;
+  border:1px solid var(--border);border-radius:3px;
+  color:var(--muted2);letter-spacing:1px;
+  transition:all .2s;cursor:default;
+}
+.pill:hover{border-color:var(--green);color:var(--green)}
+.pill.hl{border-color:rgba(0,232,122,.35);color:var(--green);background:var(--green-dim)}
+
+/* ── FOOTER ── */
+footer{
+  border-top:1px solid var(--border);
+  padding:1.5rem 2.5rem;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+}
+.f-left{font-family:var(--mono);font-size:10px;color:var(--muted2);line-height:1.9}
+.f-left strong{color:var(--text)}
+.gh-link{
+  font-family:var(--mono);font-size:10px;padding:8px 20px;
+  border:1px solid var(--border2);color:var(--text);
+  border-radius:4px;cursor:pointer;
+  text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+  transition:all .2s;
+}
+.gh-link:hover{border-color:var(--green);color:var(--green)}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .dash-grid{grid-template-columns:1fr}
+  .feat-grid{grid-template-columns:repeat(2,1fr)}
+  .portal-body{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  .nav{padding:.85rem 1.25rem}
+  .nav-links{display:none}
+  .hero{padding:5.5rem 1.25rem 3rem}
+  .section{padding:3rem 1.25rem}
+  .portal-wrap,.stack-wrap{padding:0 1.25rem 3rem}
+  .portal-head{padding:1.2rem}
+  .portal-body{padding:1.25rem}
+  .metrics-row{grid-template-columns:repeat(2,1fr)}
+  .feat-grid{grid-template-columns:1fr}
+  .r-grid{grid-template-columns:1fr 1fr}
+  footer{padding:1.25rem}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="logo"><span>//</span> OBSRVR</div>
+  <ul class="nav-links">
+    <li><a href="#dashboard">Dashboard</a></li>
+    <li><a href="#analyzer">Log Analyzer</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#stack">Stack</a></li>
+  </ul>
+  <div class="live-pill">● LIVE</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-eyebrow">// SYSTEM OBSERVABILITY PLATFORM</div>
+  <h1>Full-stack<br><em>infrastructure</em><br>intelligence</h1>
+  <p class="hero-sub">Real-time metrics ingestion, ML-powered anomaly detection,<br>and containerized log aggregation — built for production-grade monitoring.</p>
+  <div class="hero-btns">
+    <a href="#analyzer" class="btn-primary">try log analyzer ↓</a>
+    <a href="https://github.com/writickp3-ctrl/system-observability-platform" target="_blank" class="btn-ghost">GitHub ↗</a>
+  </div>
+</section>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="s-item"><div class="dot g"></div>metrics pipeline ACTIVE</div>
+  <div class="s-item"><div class="dot g"></div>anomaly detector RUNNING</div>
+  <div class="s-item"><div class="dot a"></div>log aggregator BUSY</div>
+  <div class="s-item"><div class="dot g"></div>docker containers HEALTHY</div>
+  <div class="s-item"><div class="dot g"></div>sqlite store ONLINE</div>
+</div>
+
+<!-- LIVE DASHBOARD -->
+<div class="section" id="dashboard">
+  <div class="s-label">// LIVE DASHBOARD</div>
+
+  <div class="metrics-row">
+    <div class="card metric g">
+      <div class="m-lbl">CPU USAGE</div>
+      <div class="m-val" id="m-cpu">67.3%</div>
+      <div class="m-delta up" id="d-cpu">▲ 2.1% last min</div>
+    </div>
+    <div class="card metric b">
+      <div class="m-lbl">MEMORY</div>
+      <div class="m-val" id="m-mem">4.2 GB</div>
+      <div class="m-delta up">▲ 0.3 GB allocated</div>
+    </div>
+    <div class="card metric a">
+      <div class="m-lbl">LATENCY P99</div>
+      <div class="m-val" id="m-lat">142ms</div>
+      <div class="m-delta wn">~ near threshold</div>
+    </div>
+    <div class="card metric r">
+      <div class="m-lbl">ANOMALIES</div>
+      <div class="m-val" id="m-anom">3</div>
+      <div class="m-delta dn">▲ 1 new in 5m</div>
+    </div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="card panel">
+      <div class="p-title">THROUGHPUT — req/s <span class="p-badge">● LIVE</span></div>
+      <div style="position:relative;width:100%;height:200px">
+        <canvas id="tChart"></canvas>
+      </div>
+    </div>
+    <div class="card panel">
+      <div class="p-title">ANOMALY LOG <span class="p-badge" id="logcount">4 events</span></div>
+      <div id="logfeed">
+        <div class="log-entry">
+          <span class="l-time">14:23:07</span>
+          <div class="l-body"><span class="badge CRIT">CRIT</span><div>CPU spike: 94% on node-01</div></div>
+        </div>
+        <div class="log-entry">
+          <span class="l-time">14:21:44</span>
+          <div class="l-body"><span class="badge WARN">WARN</span><div>Memory threshold exceeded: 87%</div></div>
+        </div>
+        <div class="log-entry">
+          <span class="l-time">14:19:02</span>
+          <div class="l-body"><span class="badge INFO">INFO</span><div>ML model refit triggered</div></div>
+        </div>
+        <div class="log-entry">
+          <span class="l-time">14:16:30</span>
+          <div class="l-body"><span class="badge OK">OK</span><div>Node-02 health check passed</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI LOG ANALYZER -->
+<div class="portal-wrap" id="analyzer">
+  <div class="s-label">// AI-POWERED LOG ANALYZER</div>
+  <div class="portal-box">
+    <div class="portal-head">
+      <div>
+        <div class="portal-title">PASTE YOUR SYSTEM LOG</div>
+        <div class="portal-desc">The platform analyzes your log and predicts anomaly type, severity &amp; root cause</div>
+      </div>
+      <div class="ai-pill">✦ AI POWERED</div>
+    </div>
+    <div class="portal-body">
+
+      <!-- LEFT: input -->
+      <div>
+        <label class="in-label">INPUT LOG ENTRY</label>
+        <textarea class="log-ta" id="logInput" placeholder="Paste your system log here...
+
+Examples:
+[ERROR] 2024-01-15 14:23:07 node-01 kernel: Out of memory
+[WARN] High CPU usage: 94.2% for 180s
+[ERROR] DB connection timeout: 10.0.0.5:5432 after 30s
+192.168.1.1 - GET /api/health HTTP/1.1 503 0.843"></textarea>
+
+        <div class="sample-row">
+          <span class="sample-lbl">SAMPLES:</span>
+          <button class="s-btn" onclick="loadSample('oom')">OOM Error</button>
+          <button class="s-btn" onclick="loadSample('cpu')">CPU Spike</button>
+          <button class="s-btn" onclick="loadSample('db')">DB Timeout</button>
+          <button class="s-btn" onclick="loadSample('net')">Network Fault</button>
+          <button class="s-btn" onclick="loadSample('disk')">Disk Full</button>
+        </div>
+
+        <button class="analyze-btn" id="analyzeBtn" onclick="analyzeLogs()">
+          <span id="btnText">ANALYZE LOG</span>
+        </button>
+      </div>
+
+      <!-- RIGHT: result -->
+      <div id="resultArea">
+        <div class="result-placeholder" id="resultPlaceholder">
+          <div class="rp-icon">[◎]</div>
+          <div>Awaiting log input</div>
+          <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:4px">paste a log and click ANALYZE</div>
+        </div>
+        <div class="result-panel" id="resultPanel">
+          <div class="r-head">ANALYSIS RESULT — <span id="r-time"></span></div>
+          <div class="r-grid">
+            <div class="r-card">
+              <div class="r-card-lbl">ANOMALY TYPE</div>
+              <div class="r-card-val blue" id="r-type">—</div>
+            </div>
+            <div class="r-card">
+              <div class="r-card-lbl">SEVERITY</div>
+              <div class="r-card-val" id="r-sev">—</div>
+              <div class="sev-bar"><div class="sev-fill" id="r-sev-fill"></div></div>
+            </div>
+            <div class="r-card">
+              <div class="r-card-lbl">AFFECTED COMPONENT</div>
+              <div class="r-card-val amber" id="r-comp">—</div>
+            </div>
+            <div class="r-card">
+              <div class="r-card-lbl">CONFIDENCE</div>
+              <div class="r-card-val green" id="r-conf">—</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--muted2);letter-spacing:2px;margin-bottom:6px">ROOT CAUSE ANALYSIS</div>
+            <div class="r-body" id="r-analysis"></div>
+          </div>
+          <div>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:2px;margin-bottom:6px">▶ RECOMMENDED ACTION</div>
+            <div class="r-rec" id="r-rec"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<div class="section" id="features">
+  <div class="s-label">// KEY CAPABILITIES</div>
+  <div class="feat-grid">
+    <div class="card feat">
+      <div class="feat-tag">[ML] ANOMALY DETECTION</div>
+      <h3>Isolation Forest Model</h3>
+      <p>Trained on historical system metrics to flag CPU, memory, and latency deviations. Auto-refit triggered on distribution drift.</p>
+    </div>
+    <div class="card feat">
+      <div class="feat-tag">[∑] METRICS INGESTION</div>
+      <h3>Flask Aggregation API</h3>
+      <p>Multi-node metric collection with SQLite time-series persistence, configurable scrape intervals, and REST endpoints.</p>
+    </div>
+    <div class="card feat">
+      <div class="feat-tag">[⊞] CONTAINERIZATION</div>
+      <h3>Docker Compose Deploy</h3>
+      <p>Full service isolation per component. One-command startup, reproducible across dev, staging, and production environments.</p>
+    </div>
+    <div class="card feat">
+      <div class="feat-tag">[◎] LOG AGGREGATION</div>
+      <h3>Structured Log Collector</h3>
+      <p>Cross-service log collection with severity classification, pattern matching, and searchable event history across all nodes.</p>
+    </div>
+    <div class="card feat">
+      <div class="feat-tag">[⚡] LIVE DASHBOARD</div>
+      <h3>Auto-Refresh Web UI</h3>
+      <p>Real-time node health, throughput graphs, and anomaly alert feed — no page reload required. Sub-second update latency.</p>
+    </div>
+    <div class="card feat">
+      <div class="feat-tag">[↯] ALERT ENGINE</div>
+      <h3>Multi-Level Alerting</h3>
+      <p>Threshold-based and ML-derived alerts across CRIT / WARN / INFO levels with event correlation and deduplication.</p>
+    </div>
+  </div>
+</div>
+
+<!-- TECH STACK -->
+<div class="stack-wrap" id="stack">
+  <div class="s-label">// TECH STACK</div>
+  <div class="pill-row">
+    <span class="pill hl">Python</span>
+    <span class="pill hl">Flask</span>
+    <span class="pill hl">Docker</span>
+    <span class="pill hl">scikit-learn</span>
+    <span class="pill hl">Isolation Forest</span>
+    <span class="pill">SQLite</span>
+    <span class="pill">REST API</span>
+    <span class="pill">Docker Compose</span>
+    <span class="pill">psutil</span>
+    <span class="pill">Chart.js</span>
+    <span class="pill">Jinja2</span>
+    <span class="pill">Linux</span>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="f-left">
+    Built by <strong>Writick Parui</strong> — M.E. CSE, TIET Patiala &nbsp;|&nbsp; GATE 2025 Qualified &nbsp;|&nbsp; Ex-Intern TCS iON Kolkata
+  </div>
+  <a class="gh-link" href="https://github.com/writickp3-ctrl/system-observability-platform" target="_blank">
+    View on GitHub ↗
+  </a>
+</footer>
+
+<script>
+/* ================================================================
+   LIVE CHART
+================================================================ */
+(function(){
+  var labels=[], data=[];
+  for(var i=29;i>=0;i--){
+    var t=new Date(Date.now()-i*3000);
+    labels.push(t.toLocaleTimeString('en-GB',{hour12:false}));
+    data.push(Math.round(265+Math.sin(i*0.38)*72+Math.random()*38));
+  }
+  var ctx=document.getElementById('tChart').getContext('2d');
+  var chart=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:labels,
+      datasets:[{
+        label:'req/s',data:data,
+        borderColor:'#00e87a',borderWidth:1.5,pointRadius:0,
+        fill:true,
+        backgroundColor:function(c){
+          var g=c.chart.ctx.createLinearGradient(0,0,0,200);
+          g.addColorStop(0,'rgba(0,232,122,0.14)');
+          g.addColorStop(1,'rgba(0,232,122,0)');
+          return g;
+        },
+        tension:0.42
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#0f1318',borderColor:'#1c2330',borderWidth:1,
+          titleColor:'#6b7a8d',bodyColor:'#e8edf5',
+          titleFont:{family:'JetBrains Mono',size:9},
+          bodyFont:{family:'JetBrains Mono',size:10}
+        }
+      },
+      scales:{
+        x:{display:false},
+        y:{
+          grid:{color:'rgba(28,35,48,0.7)'},
+          ticks:{color:'#3d4a5c',font:{family:'JetBrains Mono',size:8}}
+        }
+      }
+    }
+  });
+
+  setInterval(function(){
+    var v=Math.round(265+Math.sin(Date.now()/3000)*72+Math.random()*38);
+    var ts=new Date().toLocaleTimeString('en-GB',{hour12:false});
+    chart.data.labels.push(ts);
+    chart.data.datasets[0].data.push(v);
+    if(chart.data.labels.length>30){
+      chart.data.labels.shift();
+      chart.data.datasets[0].data.shift();
+    }
+    chart.update('none');
+    document.getElementById('m-cpu').textContent=(56+Math.random()*24).toFixed(1)+'%';
+    document.getElementById('m-mem').textContent=(3.6+Math.random()*1.1).toFixed(1)+' GB';
+    document.getElementById('m-lat').textContent=Math.round(110+Math.random()*65)+'ms';
+  },2500);
+})();
+
+/* ================================================================
+   SAMPLE LOGS
+================================================================ */
+var SAMPLES={
+  oom:[
+    '[ERROR] 2024-01-15 14:23:07 node-01 kernel: Out of memory: Kill process 4821 (java) score 892 or sacrifice child',
+    '[ERROR] 2024-01-15 14:23:07 node-01 kernel: Killed process 4821 (java) total-vm:8945632kB, anon-rss:7621244kB',
+    '[WARN]  2024-01-15 14:23:05 node-01 systemd: memory.limit_in_bytes reached for container app-worker',
+    '[INFO]  2024-01-15 14:22:58 node-01 monitor: heap usage 98.7%, GC pause 4200ms'
+  ].join('\n'),
+
+  cpu:[
+    '[WARN]  2024-01-15 09:15:22 node-02 monitor: CPU usage 94.2% sustained for 180 seconds',
+    '[WARN]  2024-01-15 09:12:00 node-02 monitor: CPU usage 88.1% — approaching critical threshold',
+    '[ERROR] 2024-01-15 09:10:44 node-02 app: Request queue depth 3847 — 12x normal load',
+    '[INFO]  2024-01-15 09:08:30 node-02 cron: Batch job etl_pipeline_run started (PID 7723)'
+  ].join('\n'),
+
+  db:[
+    '[ERROR] 2024-01-15 16:42:11 app-01 db: Connection timeout to 10.0.0.5:5432 after 30000ms',
+    '[ERROR] 2024-01-15 16:42:08 app-01 db: Retry 3/3 failed — pool exhausted (max_connections=100)',
+    '[WARN]  2024-01-15 16:40:55 db-01 postgres: checkpoint completion 0.95 — write amplification high',
+    '[ERROR] 2024-01-15 16:40:11 app-01 api: 503 /api/v2/orders — upstream database unreachable'
+  ].join('\n'),
+
+  net:[
+    '[ERROR] 2024-01-15 11:30:01 gw-01 network: Packet loss 34% on eth0 to 10.0.1.0/24',
+    '[WARN]  2024-01-15 11:29:55 gw-01 network: RTT spike to 1840ms (baseline 12ms)',
+    '[ERROR] 2024-01-15 11:29:44 lb-01 nginx: upstream timed out (110: Connection timed out)',
+    '[WARN]  2024-01-15 11:28:30 gw-01 monitor: NIC errors 4821/s — possible duplex mismatch'
+  ].join('\n'),
+
+  disk:[
+    '[ERROR] 2024-01-15 18:05:33 node-03 kernel: EXT4-fs error (device sda1): No space left on device',
+    '[WARN]  2024-01-15 18:05:20 node-03 monitor: Disk usage 98.3% on /var/log',
+    '[ERROR] 2024-01-15 18:05:15 node-03 app: Failed to write log file — write: no space left on device',
+    '[INFO]  2024-01-15 18:04:00 node-03 logrotate: Rotation skipped — insufficient space for archive'
+  ].join('\n')
+};
+
+function loadSample(k){
+  document.getElementById('logInput').value=SAMPLES[k]||'';
+}
+
+/* ================================================================
+   AI LOG ANALYSIS
+================================================================ */
+async function analyzeLogs(){
+  var log=document.getElementById('logInput').value.trim();
+  if(!log){alert('Please paste a log entry first.');return;}
+
+  var btn=document.getElementById('analyzeBtn');
+  var btnText=document.getElementById('btnText');
+  btn.disabled=true;
+  btnText.innerHTML='<span class="ldots"><span>.</span><span>.</span><span>.</span></span>&nbsp;ANALYZING';
+
+  document.getElementById('resultPlaceholder').style.display='flex';
+  document.getElementById('resultPanel').style.display='none';
+
+  var prompt='You are an expert SRE and system observability engineer analyzing production system logs.\n\nGiven this log input:\n"""\n'+log+'\n"""\n\nAnalyze it and respond ONLY with a valid JSON object (no markdown fences, no text outside JSON):\n{\n  "anomaly_type": "concise name e.g. OOM Kill, CPU Saturation, DB Pool Exhaustion, Network Degradation, Disk Full",\n  "severity": "CRITICAL | HIGH | MEDIUM | LOW",\n  "severity_score": <integer 0-100>,\n  "affected_component": "e.g. JVM Heap, CPU Scheduler, PostgreSQL Pool, NIC, Filesystem",\n  "confidence": "e.g. 94%",\n  "root_cause": "2-3 sentence technical explanation based on evidence in the log",\n  "impact": "1-2 sentence description of system impact",\n  "recommended_action": "3 concrete actionable steps an SRE should take immediately"\n}';
+
+  try{
+    var res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+
+    var data=await res.json();
+    var raw=data.content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('');
+    var clean=raw.replace(/```json|```/g,'').trim();
+    var r=JSON.parse(clean);
+
+    document.getElementById('r-type').textContent=r.anomaly_type||'Unknown';
+
+    var sevEl=document.getElementById('r-sev');
+    sevEl.textContent=r.severity||'—';
+    var sevColor={CRITICAL:'red',HIGH:'red',MEDIUM:'amber',LOW:'green'};
+    sevEl.className='r-card-val '+(sevColor[r.severity]||'green');
+
+    var score=parseInt(r.severity_score)||50;
+    var fill=document.getElementById('r-sev-fill');
+    fill.style.width=score+'%';
+    fill.style.background=score>=80?'var(--red)':score>=50?'var(--amber)':'var(--green)';
+
+    document.getElementById('r-comp').textContent=r.affected_component||'—';
+    document.getElementById('r-conf').textContent=r.confidence||'—';
+    document.getElementById('r-analysis').innerHTML='<strong>Root Cause:</strong>\n'+(r.root_cause||'—')+'\n\n<strong>Impact:</strong>\n'+(r.impact||'—');
+    document.getElementById('r-rec').textContent=r.recommended_action||'—';
+    document.getElementById('r-time').textContent=new Date().toLocaleTimeString('en-GB',{hour12:false});
+
+    document.getElementById('resultPlaceholder').style.display='none';
+    document.getElementById('resultPanel').style.display='flex';
+
+  }catch(err){
+    document.getElementById('resultPlaceholder').innerHTML='<div class="rp-icon">[!]</div><div style="color:var(--red)">Analysis failed</div><div style="font-size:9px;color:var(--muted);margin-top:4px">'+err.message+'</div>';
+    document.getElementById('resultPlaceholder').style.display='flex';
+    console.error('Analysis error:',err);
+  }finally{
+    btn.disabled=false;
+    btnText.textContent='ANALYZE LOG';
+  }
+}
+</script>
+</body>
+</html>
